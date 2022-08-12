@@ -36,6 +36,17 @@ public class TileDBFileIterator {
         System.out.println(arrayString);
         Array my_sparse_array = new Array(ctx, arrayString, TILEDB_READ);
         System.out.println("oh yeah");
+
+        ArraySchema schema = my_sparse_array.getSchema();
+
+        for (String name: schema.getAttributes().keySet()) {
+            String key = name.toString();
+            String value = schema.getAttributes().get(name).toString();
+            System.out.println(key + ": " + value);
+        }
+
+
+        //query.setLayout(TILEDB_ROW_MAJOR);
     }
     public void readTileDBfile() throws TileDBError, IOException {
 
