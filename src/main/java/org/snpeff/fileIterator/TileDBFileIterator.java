@@ -26,6 +26,17 @@ import java.util.Map;
 
 
 public class TileDBFileIterator {
+    public static void main(String[] args) throws TileDBError, IOException {
+
+        Context ctx = new Context();
+        //Path arraysPath = Paths.get("src","test","resources","data","1.6","quickstart_sparse_array");
+        Path arraysPath = Paths.get("src","test","resources","data","ingested_2samples_GT_DP_PL","data");
+        String arrayString =  "file://".concat(arraysPath.toAbsolutePath().toString());
+
+        System.out.println(arrayString);
+        Array my_sparse_array = new Array(ctx, arrayString, TILEDB_READ);
+        System.out.println("oh yeah");
+    }
     public void readTileDBfile() throws TileDBError, IOException {
 
         // move old array to new temp folder for the upgrade.
