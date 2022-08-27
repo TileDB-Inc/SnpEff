@@ -22,7 +22,8 @@ import static io.tiledb.java.api.QueryType.TILEDB_READ;
 
 import io.tiledb.java.api.*;
 
-import io.tiledb.libvcfnative.VCFReader;
+//giving me trouble
+//import io.tiledb.libvcfnative.VCFReader;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,24 +46,52 @@ public class TileDBFileIterator {
 
 //        filter_ids: Attr<filter_ids,TILEDB_INT32,VAR>
 //        end_pos: Attr<end_pos,TILEDB_UINT32,1>
-//        real_start_pos: Attr<real_start_pos,TILEDB_UINT32,1>
-//        qual: Attr<qual,TILEDB_FLOAT32,1>
-//        fmt_DP: Attr<fmt_DP,TILEDB_UINT8,VAR>
-//        fmt_PL: Attr<fmt_PL,TILEDB_UINT8,VAR>
-//        id: Attr<id,TILEDB_CHAR,VAR>
-//        fmt_GT: Attr<fmt_GT,TILEDB_UINT8,VAR>
+//                real_start_pos: Attr<real_start_pos,TILEDB_UINT32,1>
+//                qual: Attr<qual,TILEDB_FLOAT32,1>
+//                id: Attr<id,TILEDB_STRING_ASCII,VAR>
 //        fmt: Attr<fmt,TILEDB_UINT8,VAR>
-//        alleles: Attr<alleles,TILEDB_CHAR,VAR>
+//        alleles: Attr<alleles,TILEDB_STRING_ASCII,VAR>
 //        info: Attr<info,TILEDB_UINT8,VAR>
         for (String name: schema.getAttributes().keySet()) {
             String key = name.toString();
             String value = schema.getAttributes().get(name).toString();
             System.out.println(key + ": " + value);
         }
+        Context mycontext = my_sparse_array.getCtx();
+        System.out.println(mycontext.toString());
+        HashMap<String, Pair<Long, Long>> max_sizes = new HashMap<>();
+        //max_sizes.put("alleles", new Pair<>(0L, query.getEstResultSize(ctx, "alleles")));
 
-        Path VCFuri = Paths.get("examples","hg002_tiledb");
-        String VCFUriString =  "file://".concat(arraysPath.toAbsolutePath().toString());
-        VCFReader myVCFReader = new VCFReader(VCFUriString, null, null, null); //, String[] samples);, Optional< URI > samplesURI, Optional<String> config) {
+        //NativeArray subarray = new NativeArray(ctx, new int[] {1, 4, 1, 4}, Integer.class);
+        Query query = new Query(my_sparse_array, TILEDB_READ);
+        query.setLayout(TILEDB_ROW_MAJOR);
+
+        String stringToImport = "AGCT";
+
+        query.setBuffer("filter_ids", new NativeArray(ctx, 32, Integer.class));
+        Object mybuffer = "ALKJLKJLKJ";
+        //4 public signatures
+        //NativeArray(Context ctx, int size, Datatype nativeType)
+        //NativeArray(Context ctx, int size, Class javaType)
+        //NativeArray(Context ctx, Object buffer, Class javaType)
+        //NativeArray(Context ctx, Object buffer, Datatype nativeType)
+
+        //Exception in thread "main" io.tiledb.java.api.TileDBError: [TileDB::Query] Error: Var-Sized input attribute/dimension 'alleles' is not set correctly.
+        //query.setBuffer("alleles", new NativeArray(ctx, "abcdefghijklmnop", String.class));
+
+
+        query.setBuffer("alleles", new NativeArray(ctx, 2, String.class));
+        //Datatype.TILEDB_UINT64
+        query.submit();
+
+        int[] rows = (int[]) query.getBuffer("end_pos");
+        int[] cols = (int[]) query.getBuffer("cols");
+
+
+
+        //Path VCFuri = Paths.get("examples","hg002_tiledb");
+        //String VCFUriString =  "file://".concat(arraysPath.toAbsolutePath().toString());
+        //VCFReader myVCFReader = new VCFReader(VCFUriString, null, null, null); //, String[] samples);, Optional< URI > samplesURI, Optional<String> config) {
 
         //query.setLayout(TILEDB_ROW_MAJOR);
     }
