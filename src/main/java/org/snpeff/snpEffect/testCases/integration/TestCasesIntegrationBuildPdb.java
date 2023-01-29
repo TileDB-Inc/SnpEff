@@ -24,6 +24,7 @@ public class TestCasesIntegrationBuildPdb extends TestCasesIntegrationBase {
 	public void test_01() {
 		Log.debug("Test");
 
+		verbose = true;
 		// Command line arguments
 		String genome = "testHg19Pdb";
 		String pdbDir = path("pdb");
@@ -43,7 +44,9 @@ public class TestCasesIntegrationBuildPdb extends TestCasesIntegrationBase {
 		boolean ok = false;
 		for (DistanceResult dr : distanceResults) {
 			ok |= dr.proteinId.equals("1A12") && dr.aaPos1 == 24 && dr.aaPos2 == 135;
-			if (verbose) Log.debug("INTERACTION:\t" + dr);
+
+			if(verbose && dr.proteinId.equals("1A12") && dr.aaPos1 == 24 && dr.aaPos2 == 135) Log.debug("FOUND:\t" + dr);
+			if (debug) Log.debug("INTERACTION:\t" + dr);
 		}
 
 		assertTrue(ok, "Interaction not found!");
@@ -91,7 +94,65 @@ public class TestCasesIntegrationBuildPdb extends TestCasesIntegrationBase {
 		assertTrue(ok, "Interaction not found!");
 	}
 
+	/**
+	 * Interaction within protein intreaction using Uniprot entry 'P18754' from AlphaFold predictions
+	 */
+	@Test
 	public void test_03_build_alphafold() {
-		assertTrue(false, "UNIMPLEMENTED!!!");
+		Log.debug("Test");
+
+		// Command line arguments
+		String genome = "testHg19Pdb";
+		String pdbDir = path("pdb");
+		String idmap = path("pdb") + "/idMap_uniprotId_refSeqId.txt";
+		String args[] = {"-pdbDir", pdbDir, "-idmap", idmap, genome};
+
+		// Create command
+		SnpEffCmdPdb cmd = new SnpEffCmdPdb();
+		cmd.setVerbose(verbose);
+		cmd.setDebug(debug);
+		cmd.parseArgs(args);
+		cmd.run(true);
+		List<DistanceResult> distanceResults = cmd.getDistanceResults();
+
+		// Check results for a specific interaction
+		boolean ok = false;
+		for (DistanceResult dr : distanceResults) {
+			ok |= dr.proteinId.equals("P18754") && dr.aaPos1 == 24 && dr.aaPos2 == 135;
+			if (debug) Log.debug("INTERACTION:\t" + dr);
+		}
+
+		assertTrue(ok, "Interaction not found!");
 	}
+
+	public void test_03_ion() {
+		// Test annotation of Ion interation
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
+	public void test_04_non_covalent_bond() {
+		// Test annotation of Non-covalent bond (interaction?)
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
+	public void test_05_covalent_bond() {
+		// Test annotation of covalent bond (interation?)
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
+	public void test_06_ligand() {
+		// Test annotation of ligand
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
+	public void test_07_small_molecues() {
+		// Test annotation of smalle molecules
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
+	public void test_06_interaction_5A_range() {
+		// Test annotation of interaction at 5A range
+		throw new RuntimeException("UNIMPLEMENTED");
+	}
+
 }

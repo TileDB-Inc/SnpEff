@@ -13,15 +13,9 @@ import java.util.List;
 /**
  * A variant represents a change in a reference sequence
  * <p>
- * Notes:
- * This class was previously known as Variant.
- * <p>
- * As of version 4.0, variants in the negative strand
- * are NOT allowed any more (they just complicate the
- * code and bring no real benefit).
- * <p>
- * We are also storing much less information fields like quality,
- * score, coverage, etc. have been removed.
+ * As of version 4.0, variants have no strand, i.e. variants
+ * on the negative are NOT allowed because they just complicate the
+ * code and bring no real benefit.
  *
  * @author pcingola
  */
@@ -29,14 +23,15 @@ public class Variant extends Marker {
 
     public static final int HUGE_DELETION_SIZE_THRESHOLD = 1000000; // Number of bases
     public static final double HUGE_DELETION_RATIO_THRESHOLD = 0.01; // Percentage of bases
-    // Not a variant (ref=alt)
-    public static final Variant NO_VARIANT = new Variant(null, 0, 0, "");
+    public static final Variant NO_VARIANT = new Variant(null, 0, 0, ""); // Not a variant (ref=alt)
     private static final long serialVersionUID = -2928105165111400441L;
+
     protected VariantType variantType; // Variant type
     protected String ref; // Reference (i.e. original bases in the genome)
     protected String alt; // Changed bases
     protected String genotype; // Genotype 'ALT' (e.g. A VCF entry may encode multiple ALTs).
     protected boolean imprecise = false; // Imprecise variant: coordinates are not exact (E.g. see section "Encoding Structural Variants in VCF" from VCF spec. 4.1)
+
     public Variant() {
         super();
         ref = alt = "";
@@ -58,7 +53,7 @@ public class Variant extends Marker {
 
     public Variant(Marker parent, int position, String referenceStr, String altStr, String id) {
         super(parent, position, position, false, id);
-        init(parent, position, referenceStr, altStr, null, id);
+        init(position, referenceStr, altStr, null, id);
     }
 
     /**
@@ -121,7 +116,7 @@ public class Variant extends Marker {
                         Variant var = new Variant(chromo, start, seqRef, alt, id);
                         list.add(var);
                     }
-                } else if (altIub && refIub) {
+                } else { // Condition: altIub && refIub
                     // Both REF and ALT have IUB characters
                     IubString iubsRef = new IubString(ref);
                     for (String seqRef : iubsRef) {
@@ -167,8 +162,8 @@ public class Variant extends Marker {
         if (comp != 0) return comp;
 
         comp = alt.compareTo(v2.alt);
-		return comp;
-	}
+        return comp;
+    }
 
     /**
      * Decompose a variant into basic constituents
@@ -179,15 +174,15 @@ public class Variant extends Marker {
         if (variantType != VariantType.MIXED)
             throw new RuntimeException("Cannot decompose variant type " + variantType + ":\n\t" + this);
 
-        Variant varMnp = null, varInDel = null;
+        Variant varMnp, varInDel;
         if (ref.length() < alt.length()) {
             // MNP + INS
-            varMnp = new Variant(getChromosome(), start, ref, alt.substring(0, ref.length()), id + "_MNP");
-            varInDel = new Variant(getChromosome(), start + ref.length(), "", alt.substring(ref.length()), id + "_INS");
+            varMnp = new Variant(getChromosome(), getStart(), ref, alt.substring(0, ref.length()), id + "_MNP");
+            varInDel = new Variant(getChromosome(), getStart() + ref.length(), "", alt.substring(ref.length()), id + "_INS");
         } else {
             // MNP + DEL
-            varMnp = new Variant(getChromosome(), start, ref.substring(0, alt.length()), alt, id + "_MNP");
-            varInDel = new Variant(getChromosome(), start + alt.length(), ref.substring(alt.length()), "", id + "_DEL");
+            varMnp = new Variant(getChromosome(), getStart(), ref.substring(0, alt.length()), alt, id + "_MNP");
+            varInDel = new Variant(getChromosome(), getStart() + alt.length(), ref.substring(alt.length()), "", id + "_DEL");
         }
 
         Variant[] variants = new Variant[2];
@@ -224,8 +219,8 @@ public class Variant extends Marker {
     @Override
     public int hashCode() {
         int hashCode = getChromosomeName().hashCode();
-        hashCode = hashCode * 31 + start;
-        hashCode = hashCode * 31 + end;
+        hashCode = hashCode * 31 + getStart();
+        hashCode = hashCode * 31 + getEnd();
         hashCode = hashCode * 31 + (strandMinus ? -1 : 1);
         hashCode = hashCode * 31 + id.hashCode();
         hashCode = hashCode * 31 + ref.hashCode();
@@ -233,7 +228,7 @@ public class Variant extends Marker {
         return hashCode;
     }
 
-    void init(Marker parent, int position, String referenceStr, String altStr, VariantType variantType, String id) {
+    void init(int position, String referenceStr, String altStr, VariantType variantType, String id) {
         if (altStr == null) {
             // Not a variant (this is an interval). Set ref = alt
             altStr = referenceStr;
@@ -262,9 +257,7 @@ public class Variant extends Marker {
             alt = altStr.substring(1);
         }
 
-        //---
         // Calculate variant type
-        //---
         if (variantType == null) {
             if (ref.equals(alt)) this.variantType = VariantType.INTERVAL;
             else if (ref.length() == 1 && alt.length() == 1) this.variantType = VariantType.SNP;
@@ -274,18 +267,19 @@ public class Variant extends Marker {
             else this.variantType = VariantType.MIXED;
         } else this.variantType = variantType;
 
-        //---
         // Start and end position
         // 	- Start is always the leftmost base
         //	- End is always the rightmost affected base in the reference genome
-        //---
-        start = position;
-        if (isIns() || isSnp()) {
-            // These changes only affect one position in the reference genome
-            end = start;
-        } else { // if (isDel() || isMnp()) {
-            // Update 'end' position
-            if (ref.length() > 1) end = start + ref.length() - 1;
+        setStart(position);
+        if (isSnp()) {
+            // These changes only affect one base in the reference genome
+            setEndClosed(getStart());
+        } else if (isIns()) {
+            // Insertions are "zero" length
+            setEnd(getStart());
+        } else {
+            // Cases isDel(), or isMnp(): Update 'end' position
+            setEnd(getStart() + ref.length());
         }
 
         // Effect type
@@ -303,10 +297,6 @@ public class Variant extends Marker {
 
     public boolean isDup() {
         return (variantType == VariantType.DUP);
-    }
-
-    public boolean isElongation() {
-        return lengthChange() > 0;
     }
 
     public boolean isImprecise() {
@@ -376,10 +366,6 @@ public class Variant extends Marker {
         return size() > HUGE_DELETION_SIZE_THRESHOLD;
     }
 
-    public boolean isTruncation() {
-        return lengthChange() < 0;
-    }
-
     /**
      * Is this a change or is ALT actually the same as the reference
      */
@@ -398,7 +384,7 @@ public class Variant extends Marker {
         if (!ref.isEmpty() || !alt.isEmpty()) return alt.length() - ref.length();
 
         // Default to traditional approach for imprecise and structural variants
-        return end - start;
+        return size();
     }
 
     /**
@@ -417,12 +403,12 @@ public class Variant extends Marker {
         String netChange = alt;
         if (isDel()) netChange = ref; // In deletions 'alt' is empty
 
-        int removeBefore = marker.getStart() - start;
+        int removeBefore = marker.getStart() - getStart();
         if (removeBefore > 0) {
             if (removeBefore >= netChange.length()) return ""; // Nothing left
         } else removeBefore = 0;
 
-        int removeAfter = end - marker.getEnd();
+        int removeAfter = getEndClosed() - marker.getEndClosed();
         if (removeAfter > 0) {
             if ((removeBefore + removeAfter) >= netChange.length()) return ""; // Nothing left
         } else removeAfter = 0;
@@ -463,20 +449,13 @@ public class Variant extends Marker {
     public String toString() {
         if ((ref == null || ref.isEmpty()) //
                 && (alt == null || alt.isEmpty()) //
-        ) return "chr" + getChromosomeName() + ":" + start + "-" + end + "[" + variantType + "]";
+        ) return "chr" + getChromosomeName() + ":" + getStart() + "-" + getEndClosed() + "[" + variantType + "]";
 
         return "chr" + getChromosomeName() //
-                + ":" + start //
+                + ":" + getStart() //
                 + "_" + getReference() //
                 + "/" + getAlt() //
                 + ((id != null) && (id.length() > 0) ? " '" + id + "'" : "");
-    }
-
-    /**
-     * Show variant in ENSEMBL's VEP format
-     */
-    public String toStringEnsembl() {
-        return getChromosomeName() + "\t" + start + "\t" + end + "\t" + ref + "/" + alt + "\t+";
     }
 
     /**
